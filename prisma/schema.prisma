@@ -1,0 +1,164 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["jsonProtocol"]
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("POSTGRES_PRISMA_URL")
+  directUrl         = env("POSTGRES_URL")
+  shadowDatabaseUrl = env("POSTGRES_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  role      String?   @default("regular")
+  name      String?
+  password  String?
+  createdat DateTime @default(now())
+  updatedat DateTime @default(now())
+  mounts     Mount[]
+  inbox      Inbox?
+  transfers Transfer[]
+  messagess Message[]
+  shared Shared[]
+  sharedUsers SharedUser[]
+
+}
+
+model Mount {
+  id         Int      @id @default(autoincrement())
+  alias      String
+  user       User     @relation(fields: [email], references: [email])
+  email      String
+  host       String
+  xfer_addr  String
+  username   String
+  password   String?
+  jwttoken   String?
+  privatekey String
+  pubKey     String
+  kid        String?
+  createdby  String?
+  createdat  DateTime @default(now())
+  updatedat  DateTime @default(now())
+
+  inboxes      Inbox[]
+  shares       Shared[]
+
+  @@unique([email, host, username])
+}
+
+model Inbox {
+  id         Int      @id @default(autoincrement())
+  name       String?
+  user       User     @relation(fields: [email], references: [email], onDelete: Cascade)
+  email      String   @unique
+  mount      Mount    @relation(fields: [mount_id], references: [id], onDelete: Cascade)
+  mount_id   Int      
+  share      String
+  path       String
+  createdby  String?
+  createdat  DateTime? @default(now())
+  updatedat  DateTime? @default(now())
+
+  @@unique([email, mount_id, share, path])
+}
+
+model Transfer {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [email], references: [email])
+  email      String   
+  status String
+  direction String
+  subject String?
+  message String?
+  specs String?
+  error String?
+  createdby  String?
+  createdat  DateTime? @default(now())
+  updatedat  DateTime? @default(now())
+  
+
+}
+
+model Message {
+  id         String  @unique
+  kind       String
+  status     String
+  user       User     @relation(fields: [email], references: [email])
+  email      String   
+  direction  String?
+  tos String?
+  subject String?
+  message String?
+  specs String?
+  threadID String?
+  expire String?
+  error String?
+  createdat  DateTime? @default(now())
+  updatedat  DateTime? @default(now())  
+
+  @@index([updatedat(sort: Desc)])
+
+  recipients Recipient[]
+
+}
+
+model Recipient {
+  id         Int      @id @default(autoincrement())
+  kind       String
+  status     String
+  email      String   
+  message    Message     @relation(fields: [message_id], references: [id])
+  message_id String
+  specs String?
+  expire String?
+  error String?
+  expireat   DateTime?
+  createdat  DateTime? @default(now())
+  updatedat  DateTime? @default(now())  
+
+  @@unique([email, message_id])
+  @@index([updatedat(sort: Desc)])
+}
+
+model Shared {
+  id         Int      @id @default(autoincrement())
+  alias       String?
+  desc       String?
+  user       User     @relation(fields: [email], references: [email], onDelete: Cascade)
+  email      String   
+  mount      Mount    @relation(fields: [mount_id], references: [id], onDelete: Cascade)
+  mount_id   Int      
+  share      String
+  read Boolean
+  write Boolean
+  list Boolean
+  delete Boolean
+  updatedby  String?
+  createdat  DateTime? @default(now())
+  updatedat  DateTime? @default(now())
+
+  sharedUsers SharedUser[]
+
+  @@unique([email, mount_id, share])
+}
+
+model SharedUser {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [email], references: [email], onDelete: Cascade)
+  email      String
+  share     Shared @relation(fields: [shared_id], references: [id], onDelete: Cascade)
+  shared_id  Int
+  expireat   DateTime?
+  createdby  String
+  createdat  DateTime? @default(now())
+  updatedat  DateTime? @default(now())  
+
+  @@unique([email, shared_id])
+}

@@ -1,0 +1,3777 @@
+openapi: 3.0.3
+info:
+  title: Filash Cloud File Server
+  description: |-
+    Filash cloud file server is the next generation file server specifically designed for the cloud era with native features built for hybrid cloud enviornments with both public and private cloud deployments as well as various on-premise storages such as hard drive and SSD. With the next generation features listed below, it is the best choice in any environment and the perfect replacement of any old servers.
+    
+    It overcomes the most challenging defects of the current file servers such as FTP, SFTP, scp and etc. With the state of the art design and implementation of data transportation aglorithms powered by AI, it triumphs by 
+    
+    * all data is encrypted with the most secure encryption algorithm
+    
+    * transfer any size data at full speed of the network/internet utilizing the full bandwidth with AI powered adaptive and adjustable rate control
+    
+    * high network delay doesn't affect the speed, cross continent, satellite earth, interplanetary transfer speed is the same as same city
+    
+    * high data loss rate doesn't affect the speed, with old file servers, over 10% loss rate will make them unworkable, while filash cloud file server still works fine with over 90% loss rate.
+    
+    * the number of files or the file size doesn't affect the speed, with older servers, transferring a big number of small files or a set of files with a complicated variation of sizes can be very slow, while filash cloud file server still keeps the transfer speed as high as the storage read/write, please find the [detailed benchmark](https://filash.io/benchmark)
+    
+    * [find more features](https://filash.io)
+    
+  
+  termsOfService: https://filash.io/terms/
+  contact:
+    email: filash@filash.io
+  license:
+    name: Proprietary
+    url: https://www.filash.io/licenses
+  version: 1.0.0
+externalDocs:
+  description: Find out more about filash
+  url: https://filash.io
+servers:
+  - url: https://filash.io/api/v1
+tags:
+  - name: users
+    description: |-
+      APIs about users. 
+      
+      There are totally three roles for users, regular/admin/super. 
+      
+      Super user manages everything of the server. 
+      
+      Admin user manages everything of own domain except the systemic resources that are created by the super user such as local type storage or aws s3 type storage with no explicit IAM or access_key provided for security concerns, please find more details about systemic resources at /storages.
+      
+      Regular users can do transfers/jobs with granted permissions from policies or bearer token created by admin or super user.
+      Regular users are optional in case a bearer token is being used with a sub and share/permissions policy map
+    externalDocs:
+      description: more
+      url: http://filash.io
+  - name: storages
+    description: |-
+      APIs about storages.
+      
+      Resources such as storage, share, policy, transfer and job are domain scoped. Two types of storages are supported, local and S3. Only super or admin user can create, edit and delete storages.
+  - name: shares
+    description: |-
+      APIs about shares
+      
+      Shares are used as access points of the storages for transfers, jobs, and also custom settings can be assigned to shares for various transfer/job environments. Shares can also be used to hide the path with the random share id. Shares can be created directly to the root of the storage, a sub directory, or even an individual file. 
+  - name: policies
+    description: |-
+      APIs about policies
+      
+      Policies hold the relationships of the users and the shares connected with permissions. Policy is optional when bearer token is used if the token has polices already, while policies in the database will be merged if the token has none or insufficient policies.
+  - name: keys
+    description: |- 
+      APIs about authorized keys
+      
+      Any user can upload multiple public keys as the authoriazed keys similar to ssh to verify the bearer tokens issued and signed with the corresponding private key. 
+      
+      The signature of the public key will be calcuated to be the id of the key. 
+      The algorithm of the signature is the unpadded alternate base64 encoding (defined in RFC 4648) of SHA256 checksum of PKIX, ASN.1 DER form of the key.
+      
+      ssh, openssl public key or x509 certificate are supported with key types: RSA, DSA, ECDSA256, ECDSA384, ECDSA521, ED25519. 
+  - name: transfers
+    description: |- 
+      APIs about transfers
+  - name: jobs
+    description: |-
+      APIs about jobs
+  - name: files
+    description: |-
+      APIs about file operations
+  - name: events
+    description: |-
+      APIs about events
+      
+      POST/PUT/DELETE restful API request will generate events,  transfers and jobs will also generate corresponding events. Events can be followed with http steaming (chunked transfer encoding), in which each line is a json format of progress numbers.
+  - name: settings
+    description: |- 
+      settings
+paths:
+  /ping:
+    get:
+      summary: ping the filash server for health check purposes
+      operationId: ping
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '503':
+          $ref: '#/components/responses/503'
+  /users:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+    post:
+      tags:
+        - users
+      summary: Create user in the givien domain
+      description: This can only be done by the logged in user. The very first super user can be created by running the command line like `filash admin -o -d'{"id":"super","password":"1234"}`. If the domain field is empty, a random value will be generated. Users created by higher role users are forbidden to be updated or delete by lower role uers.
+      operationId: createUser
+      requestBody:
+        description: The user object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - users
+      summary: List users in the given domain
+      description: Super user can list users of any domain, admin users can list users of their own domain, regular users have no permission to list.
+      operationId: getUsers
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - users
+      summary: Get the details of an user
+      description: Super user can get a user details of any domain, admin users can get a user details of their own domain, regular only gets own details.
+      operationId: getUser
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - users
+      summary: Update an existing user
+      description: Super user can update any user, admin user can update users of its own domain, regular user can only update self.
+      operationId: putUser
+      parameters:
+        - $ref: '#/components/parameters/filash-settings-copy'
+      requestBody:
+        description: The details of the user to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - users
+      summary: Delete an user
+      description: Super user can delete any user, admin user can delete users of its own domain, regular user can only delete self, self can also be deleted.
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/last_updated_at'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /self:
+    get:
+      tags:
+        - users
+      summary: Get self details
+      description: This is just a shortcut of GET /users/{loggedin id}
+      operationId: getSelf
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - users
+      summary: Update details of self
+      description: This is just a shortcut of PUT /users/{loggedin id}
+      operationId: putSelf
+      parameters:
+        - $ref: '#/components/parameters/filash-settings-copy'
+      requestBody:
+        description: The details of self to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /storages:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+    post:
+      tags:
+        - storages
+      summary: Create a storage in the givien domain
+      description: |-
+        This can only be done by the logged in user. Local storages, or S3 storages with no explicit credentials such as assume role or access key, can only be created by super users with a specific domain id or a generated random domain id. max_number_of_storages is obersved. A .filash folder in the root of the path will be created along to accommadate the meta data, and also used to indicate the state of the mounted storage, so please do not remove/rename it manually to cause chaos. Storages created by higher role users are forbidden to be updated or delete by lower role uers.
+      
+        Note: ${id} in the path will be replaced with the given/generated id, ${FILASH_HOME} will be replaced with the FILASH_HOME absolute path, ${domain} will be replaced with the domain id.
+      operationId: createStorage
+      requestBody:
+        description: The storage object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Storage'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Storage'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - storages
+      summary: List storages in the given domain
+      description: Super user can list storages of any domain, admin users can list storages of their own domain, regular users have no permission to list.
+      operationId: getStorages
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Storage'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /storages/{id}:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - storages
+      summary: Get the details of a storage
+      description: Super user can get a storage details of any domain, admin users can get a storage details of their own domain, regular users cannot get storage details.
+      operationId: getStorage
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Storage'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - storages
+      summary: Update an existing storage
+      description: Super user can update any storage, admin user can update storages that was created by admin users of own domain, regular user can not update storages.
+      operationId: putStorage
+      parameters:
+        - $ref: '#/components/parameters/filash-settings-copy'
+      requestBody:
+        description: The details of the storage to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Storage'
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - storages
+      summary: Delete a storage
+      description: Super user can delete any storage, admin user can delete storages of its own domain, regular user cannot delete any storage.
+      operationId: deleteStorage
+      parameters:
+        - $ref: '#/components/parameters/last_updated_at'
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /shares:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+    post:
+      tags:
+        - shares
+      summary: Create a share to the given storage
+      description: |-
+        This can only be done by the logged in user. Super or dmin users can create shares, regular users have no permission to create.
+        
+        max_number_of_shares is obersved. A .filash folder in the root of the path will be created along to accommadate the meta data, and also used to indicate the state of the mounted storage, so please do not remove/rename it manually to cause chaos.
+
+        Shares created by higher role users are forbidden to be updated or delete by lower role uers.
+      
+        Note: ${id} in the path will be replaced with the given/generated id, ${FILASH_HOME} will be replaced with the FILASH_HOME absolute path, ${domain} will be replaced with the domain id.
+      operationId: createShare
+      requestBody:
+        description: The share object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Share'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Share'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - shares
+      summary: List shares in the given domain
+      description: Super user can list shares of any domain, admin users can list shares of their own domain, regular users have no permission to list.
+      operationId: getShares
+      parameters:
+        - $ref: '#/components/parameters/storage'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Share'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /shares/{id}:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - shares
+      summary: Get the details of a share
+      description: Super user can get a share details of any domain, admin users can get a share details of their own domain, regular users cannot get share details.
+      operationId: getShare
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Share'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - shares
+      summary: Update an existing share
+      description: Super user can update any share, admin user can update the share that was created by admin users of own domain, regular user can not update shares.
+      operationId: putShare
+      parameters:
+        - $ref: '#/components/parameters/filash-settings-copy'
+      requestBody:
+        description: The details of the share to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Share'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - shares
+      summary: Delete a share
+      description: Super user can delete any share, admin user can delete shares of its own domain, regular user cannot delete any share. A share still with policies cannot be deleted.
+      operationId: deleteShare
+      parameters:
+        - $ref: '#/components/parameters/last_updated_at'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /policies:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+    post:
+      tags:
+        - policies
+      summary: Create a policy to relate subject, share and permssions.
+      description: |-
+        This can only be done by the logged in user. Super or dmin users can create policies, regular users have no permission to create.
+        
+        max_number_of_policies is obersved.
+        
+        The subject of the policy can be a user or group id. Group ids can be used in the bearer token to have additional permissions.
+
+        Policies created by higher role users are forbidden to be updated or delete by lower role uers.
+      operationId: createPolicy
+      requestBody:
+        description: The policy object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Policy'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - policies
+      summary: List policies in the given domain
+      description: Super user can list policies of any domain, admin users can list policies of their own domain, regular users can only list own policies.
+      operationId: getPolicies
+      parameters:
+        - $ref: '#/components/parameters/storage'
+        - $ref: '#/components/parameters/share'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Policy'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /policies/{id}:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - policies
+      summary: Get the details of a policy
+      description: Super user can get a policy details of any domain, admin users can get a policy details of their own domain, regular users cannot get policy details.
+      operationId: getPolicy
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - policies
+      summary: Update an existing policy
+      description: Super user can update any policy, admin user can update the policy that was created by admin users of own domain, regular user can not update policies.
+      operationId: putPolicy
+      parameters:
+        - $ref: '#/components/parameters/filash-settings-copy'
+      requestBody:
+        description: The details of the policy to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Policy'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - policies
+      summary: Delete a policy
+      description: Super user can delete any policy, admin user can delete policies of its own domain, regular user can delete own policy.
+      operationId: deletePolicy
+      parameters:
+        - $ref: '#/components/parameters/last_updated_at'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /keys:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+    post:
+      tags:
+        - keys
+      summary: Upload an authorized key to existing user.
+      description: |-
+        This can only be done by the logged in user. Super or dmin users can upload keys to any user, regular users can upload keys only to self.
+        
+        max_number_of_authorized_keys_per_user is obersved.
+
+        Keys created by higher role users are forbidden to be updated or delete by lower role uers.
+      operationId: createKey
+      requestBody:
+        description: The key object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Key'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Key'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - keys
+      summary: List keys in the given user
+      description: Super user can list keys of any user, admin users can list keys of users of their own domain, regular users can only list own keys.
+      operationId: getKeys
+      parameters:
+        - $ref: '#/components/parameters/user'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Key'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /keys/{id}:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+      - $ref: '#/components/parameters/user'
+    get:
+      tags:
+        - keys
+      summary: Get the details of a key
+      description: Super user can get a key details of any domain, admin users can get a key details of their own domain, regular users can only get own key details.
+      operationId: getKey
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Key'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - keys
+      summary: Delete a public key
+      description: Super user can delete any key, admin user can delete keys of its own domain, regular user can delete own key.
+      operationId: deleteKey
+      parameters:
+        - $ref: '#/components/parameters/last_updated_at'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /transfers:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+    post:
+      tags:
+        - transfers
+      summary: Create a transfer.
+      description: |-
+        This can only be done by the logged in user. Super users can create transfers in any domain, admin and regular users can create transfers in own domain only.
+        
+        Parallel session transfers can be created if allow_parallel is true in settings
+
+        Transfers created by higher role users are forbidden to be updated or delete by lower role uers.
+      operationId: createTransfer
+      parameters:
+        - $ref: '#/components/parameters/filash-follow'
+      requestBody:
+        description: The transfer object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transfer'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - transfers
+      summary: List transfers in the given domain
+      description: Super user can list transfers of any domain, admin users can list transfers of their own domain, regular users can list own transfers.
+      operationId: getTransfers
+      parameters:
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/user'
+        - $ref: '#/components/parameters/storage'
+        - $ref: '#/components/parameters/share'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transfer'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /transfers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - transfers
+      summary: Get the details of a transfer
+      description: Super user can get a transfer details of any domain, admin users can get a transfer details of their own domain, regular users can get own transfer details.
+      operationId: getTransfer
+      parameters:
+        - $ref: '#/components/parameters/filash-follow'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - transfers
+      summary: Update/abort an existing transfer
+      description: Super user can update a transfer of any domain, admin users can update a transfer of their own domain, regular users can update own transfers. Sync settings, resume and spec settings can be updated. The status of the transfer can be updated to 'enqueued' for rerun, to 'abort' to abort the active (enqueued or running) transfer.
+      operationId: putTransfer
+      parameters:
+        - $ref: '#/components/parameters/filash-settings-copy'
+      requestBody:
+        description: The details of the transfer to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transfer'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - transfers
+      summary: Delete a transfer
+      description: Super users can delete any transfer, admin users can delete transfer of their own domain, regular users can delete own transfers.
+      operationId: deleteTransfer
+      parameters:
+        - $ref: '#/components/parameters/last_updated_at'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /transfers/{id}/sessions:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - transfers
+      summary: List sessions of the transfer
+      description: Super user can list sessions of any transfer, admin users can list sessions of their own domain, regular users can list sessions of own transfers.
+      operationId: getSessions
+      parameters:
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /transfers/{tid}/sessions/{sid}:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/tid'
+      - $ref: '#/components/parameters/sid'
+    get:
+      tags:
+        - transfers
+      summary: Get the details of a session
+      description: Super user can get a session details of any domain, admin users can get a session details of their own domain, regular users can get own session details.
+      operationId: getSession
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - transfers
+      summary: Update/abort an existing session
+      description: Super user can update a session of any domain, admin users can update a session of their own domain, regular users can update own sessions. Resume can be updated. The status of the transfer can be updated to 'enqueued' for rerun, to 'abort' to abort the active (enqueued or running) session.
+      operationId: putSession
+      requestBody:
+        description: The details of the session to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /transfers/{tid}/sessions/{sid}/files:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/tid'
+      - $ref: '#/components/parameters/sid'
+    get:
+      tags:
+        - transfers
+      summary: List the transferred files of the session
+      description: Super user can list session files of any domain, admin users can list session files of their own domain, regular users can get own session files.
+      operationId: getSessionFiles
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFile'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /jobs:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+    post:
+      tags:
+        - jobs
+      summary: Create a job.
+      description: |-
+        This can only be done by the logged in user. Super users can create jobs in any domain, admin and regular users can create jobs in own domain only.
+
+        Jobs created by higher role users are forbidden to be updated or delete by lower role uers.
+        
+      operationId: createJob
+      requestBody:
+        description: The job object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Job'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - jobs
+      summary: List jobs in the given domain
+      description: Super user can list jobs of any domain, admin users can list jobs of their own domain, regular users can list own jobs.
+      operationId: getJobs
+      parameters:
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/user'
+        - $ref: '#/components/parameters/storage'
+        - $ref: '#/components/parameters/share'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/tag'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /jobs/{id}:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - jobs
+      summary: Get the details of a job
+      description: Super user can get a job details of any domain, admin users can get a job details of their own domain, regular users can get own job details.
+      operationId: getJob
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - jobs
+      summary: Update/abort an existing job
+      description: Super user can update a job of any domain, admin users can update a job of their own domain, regular users can update own transfers. Repeat spec can be updated. The status of the job can be updated to 'enqueued' for rerun, to 'abort' to abort the active (enqueued or running) job.
+      operationId: putJob
+      parameters:
+        - $ref: '#/components/parameters/filash-settings-copy'
+      requestBody:
+        description: The details of the job to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Job'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - jobs
+      summary: Delete a job
+      description: Super users can delete any job, admin users can delete jobs of their own domain, regular users can delete own jobs.
+      operationId: deleteJob
+      parameters:
+        - $ref: '#/components/parameters/last_updated_at'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /jobs/{id}/result:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/id'
+    get:
+      tags:
+        - jobs
+      summary: List the files of the job 
+      description: Super user can list files of any job, admin users can list job files of their own domain, regular users can get own job files.
+      operationId: getJobFiles
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobFile'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /files:
+    parameters:
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/filash-storage'
+      - $ref: '#/components/parameters/filash-share'
+    post:
+      tags:
+        - files
+      summary: Create an empty file, folder or symlink.
+      description: |-
+        This can only be done by the logged in user. Super users can create files in any domain, admin/regular users can create files in own domain, regular users must have ["stat", "write"] permissions to create files.
+      operationId: createFile
+      parameters:
+        - name: filash-recursively
+          in: header
+          description: whether to create folder path recursively, true if present
+          schema:
+            type: string
+            example: yes
+        - $ref: '#/components/parameters/filash-domain'
+      requestBody:
+        description: The file object to be created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/File'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '409':
+          $ref: '#/components/responses/409'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    get:
+      tags:
+        - files
+      summary: List files in the root of the given storage/share
+      description: This can only be done by the logged in user. Super users can list files in any domain, admin/regular users can list files in own domain, regular users must have ["stat", "list"] permissions to list files. The stat info will be returned if there is no trailing forward slash, otherwise a list of files will be returned for the folder 
+      operationId: getFiles
+      parameters:
+        - $ref: '#/components/parameters/accept'
+        - $ref: '#/components/parameters/filash-search'
+        - $ref: '#/components/parameters/Content-Encoding'
+        - $ref: '#/components/parameters/filash-no-sort'
+        - $ref: '#/components/parameters/filash-no-cache'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/filash-with'
+        - $ref: '#/components/parameters/filash-next-token'
+        - $ref: '#/components/parameters/filash-ignore-error'
+        - $ref: '#/components/parameters/filash-summary-only'
+        - $ref: '#/components/parameters/filash-includes'
+        - $ref: '#/components/parameters/filash-excludes'
+        - $ref: '#/components/parameters/filash-before'
+        - $ref: '#/components/parameters/filash-after'
+        - $ref: '#/components/parameters/filash-symlink'
+        - $ref: '#/components/parameters/filash-background'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /files/{path}:
+    parameters:
+      - $ref: '#/components/parameters/path'
+      - $ref: '#/components/parameters/filash-domain'
+      - $ref: '#/components/parameters/filash-storage'
+      - $ref: '#/components/parameters/filash-share'
+    get:
+      tags:
+        - files
+      summary: List files in the given path
+      description: This can only be done by the logged in user. Super users can list files in any domain, admin/regular users can list files in own domain, regular users must have ["stat", "list"] permissions to list files. The stat info will be returned if there is no trailing forward slash, otherwise a list of files will be returned for the folder 
+      operationId: getFilesWithPath
+      parameters:
+        - $ref: '#/components/parameters/accept'
+        - $ref: '#/components/parameters/filash-search'
+        - $ref: '#/components/parameters/Content-Encoding'
+        - $ref: '#/components/parameters/filash-no-sort'
+        - $ref: '#/components/parameters/filash-no-cache'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/filash-with'
+        - $ref: '#/components/parameters/filash-next-token'
+        - $ref: '#/components/parameters/filash-ignore-error'
+        - $ref: '#/components/parameters/filash-summary-only'
+        - $ref: '#/components/parameters/filash-includes'
+        - $ref: '#/components/parameters/filash-excludes'
+        - $ref: '#/components/parameters/filash-before'
+        - $ref: '#/components/parameters/filash-after'
+        - $ref: '#/components/parameters/filash-symlink'
+        - $ref: '#/components/parameters/filash-background'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    put:
+      tags:
+        - files
+      summary: upload a file
+      description: Super user can upload a file of any domain, admin users can upload a file of their own domain, regular users can upload of permitted shares with permisssions ["stat","write"], content_length is observed as the max content length of the upload
+      operationId: putFile
+      parameters:
+        - name: filash-overwrite
+          in: header
+          description: whether to overwrite the existing file, overwrite if present
+          schema:
+            type: string
+            example: yes
+        - name: Content-Encoding
+          in: header
+          description: file content can be base64 encoded if the header's value is base64
+          schema:
+            type: string
+            example: base64
+            enum:
+              - base64
+      requestBody:
+        description: The details of the job to be updated.
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              anyOf:
+                - format: binary
+                - format: base64
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+    delete:
+      tags:
+        - files
+      summary: Delete a file/folder/link
+      description: Super users can delete any file, admin users can delete file of their own domain, regular users can delete files in permitted shares with permissions ["list","stat","rm"]
+      operationId: deleteFile
+      parameters:
+        - $ref: '#/components/parameters/filash-ignore-error'
+        - $ref: '#/components/parameters/filash-summary-only'
+        - $ref: '#/components/parameters/filash-includes'
+        - $ref: '#/components/parameters/filash-excludes'
+        - $ref: '#/components/parameters/filash-before'
+        - $ref: '#/components/parameters/filash-after'
+        - $ref: '#/components/parameters/filash-symlink'
+        - $ref: '#/components/parameters/filash-background'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /events:
+    get:
+      tags:
+        - events
+      summary: List events in the given domain
+      description: Super user can list events of any domain, admin users can list events of own domain, regular users can only list own events.
+      operationId: getEvents
+      parameters:
+        - name: resource
+          in: query
+          description: the resource type name to scope the events, the user parameter is required if present
+          required: false
+          schema:
+            type: string
+            example: share
+            enum:
+              - user
+              - storage
+              - share
+              - policy
+              - authkey
+              - transfer
+              - job
+        - name: method
+          in: query
+          description: the restful method name in lower case to scope the events, the resource parameter is required if present
+          schema:
+            type: string
+            example: put
+            enum:
+              - post
+              - put
+              - delete
+        - name: filash-follow
+          in: header
+          description: follow/watch the events with http streaming synchronously, the presence of the header is sufficient regardless of the value
+          required: false
+          schema:
+            type: string
+            example: yes
+        - $ref: '#/components/parameters/user'
+        - $ref: '#/components/parameters/filash-domain'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/filash-next-token'
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            filash-next-token:
+              $ref: '#/components/headers/filash-next-token'
+            X-Count:
+              $ref: '#/components/headers/X-Count'
+            X-Total-Count:
+              $ref: '#/components/headers/X-Total-Count'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+  /settings:
+    get:
+      tags:
+        - settings
+      summary: List the global settings that the server is using or the default values
+      description: Only super user can list and reload the global settings 
+      operationId: getSettings
+      parameters:
+        - name: reload
+          in: query
+          description: whether to reload the global settings, if present, will reload the global settings
+          schema:
+            type: string
+            example: yes
+        - name: default
+          in: query
+          description: whether to return default values of the global settings, if present, defaults will be returned
+          schema:
+            type: string
+            example: yes
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalSettings'
+components:
+  schemas:
+    UserSettings:
+      type: object
+      properties:
+        max_number_of_authorized_keys_per_user:
+          type: integer
+          format: int64
+          default: 1<<63 - 1
+          example: 100
+    GlobalUserSettings:
+      type: object
+      properties:
+        max_number_of_users:
+          type: integer
+          format: int64
+          default: 1<<63 - 1
+          example: 100
+    StorageSettings:
+      type: object
+      properties:
+        max_content_length:
+          type: integer
+          format: int64
+          default: 67108864
+        min_content_length:
+          type: integer
+          format: int64
+          default: 0
+        content_length:
+          type: integer
+          format: int64
+          default: 8388608
+        max_number_of_retries:
+          type: integer
+          format: int64
+          default: 15
+        min_number_of_retries:
+          type: integer
+          format: int64
+          default: 0
+        number_of_retries:
+          type: integer
+          format: int64
+          default: 0
+        max_retry_interval:
+          type: string
+          description: in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1s
+          default: 1s
+        min_retry_interval:
+          type: string
+          description: in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1s
+          default: 100ms
+        retry_interval:
+          type: string
+          description: in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1s
+          default: 100ms
+    GlobalStorageSettings:
+      allOf: 
+        - type: object
+          properties:
+            max_number_of_storages:
+              type: integer
+              format: int64
+              example: 100
+              default: 1<<63 - 1
+            allowed_storage_types:
+              type: array
+              items:
+                type: string
+                example: s3
+                enum:
+                  - local
+                  - s3
+            paths:
+              type: object
+              properties:
+                local:
+                  $ref: '#/components/schemas/PathFilters'
+                s3:
+                  $ref: '#/components/schemas/PathFilters'
+        - $ref: '#/components/schemas/StorageSettings'
+    AMZSettings:
+      type: object
+      properties:
+        amz_storage_class:
+          type: string
+          description: the AWS s3 class
+          example: STANDARD
+          default: STANDARD
+          enum:
+            - STANDARD
+            - REDUCED_REDUNDANCY
+            - GLACIER
+            - STANDARD_IA
+            - ONEZONE_IA
+            - INTELLIGENT_TIERING
+            - DEEP_ARCHIVE
+            - OUTPOSTS
+            - GLACIER_IR
+        amz_server_side_encryption:
+          type: string
+          description: The server-side encryption algorithm used when storing objects in Amazon
+        amz_kms_key_id:
+          type: string
+          description: the ID of the Amazon Web Services Key Management Service
+        amz_acl:
+          type: string
+          description: The canned ACL to apply to the AWS S3 object
+    LocalSettings:
+      type: object
+      properties:
+        local_file_mode:
+          type: integer
+          description: the file mode the file to be written on linux system
+          example: 644
+          default: 644
+    ShareSettings:
+      allOf:
+        - $ref: '#/components/schemas/AMZSettings'
+        - $ref: '#/components/schemas/LocalSettings'
+    GobalShareSettings:
+      allOf:
+        - type: object
+          properties:
+            max_number_of_shares:
+              type: integer
+              format: int64
+              example: 100
+              default: 1<<63 - 1
+        - $ref: '#/components/schemas/ShareSettings'
+    GlobalPolicySettings:
+      type: object
+      properties:
+        max_number_of_policies:
+          type: integer
+          format: int64
+          example: 100
+          default: 1<<63 - 1
+    GlobalAuthSettings:
+      type: object
+      properties:
+        max_bearer_token_duration:
+          type: string
+          description: in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1h
+          default: 24h
+        bearer_token_duration:
+          type: string
+          description: in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 30m
+          default: 30m
+        allow_token_with_policies:
+          type: boolean
+          description: if true, bearer token (JWT) can have policies
+          default: false
+        allow_token_expires_at:
+          type: boolean
+          description: if true, bearer token (JWT) can have arbitrary expires_at
+          default: true
+    GlobalDBSettings:
+      type: object
+      properties:
+        type: 
+          type: string
+          description: set it self to host the db instance internally, alien to use external db instance 
+          example: self
+          default: self
+          enum:
+            - self
+            - alien
+        log_level:
+          type: string
+          description: db log level
+          example: error
+          default: error
+          enum:
+            - trace
+            - debug
+            - info
+            - warn
+            - error
+            - fatal
+            - panic
+        endpoints:
+          type: string
+          description: db endpoints to connect to external instances or start internally
+          example: http://127.0.0.1:2379
+          default: http://127.0.0.1:2379
+        insecure:
+          type: boolean
+          description: if true, internal db instance start without ssl
+          default: true
+        timeout:
+          type: string
+          description: in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 30s
+          default: 30s
+        dir:
+          type: string
+          description: directory path to save the self hosted db files
+          default: ${FILASH_HOME}/filash.db
+        username:
+          type: string
+          description: user name of the external db instance
+        password:
+          type: string
+          description: password of the external db instance
+        ca_path:
+          type: string
+          description: path to CA for SSL db connection
+        cert_path:
+          type: string
+          description: path to the certificate for SSL db instance
+        key_path:
+          type: string
+          description: path to the private key for SSL dbconnection
+        connection_pool_size:
+          type: string
+          description: the size of the db connection pool on the client side
+          default: 1000
+    GlobalEventSettings:
+      type: object
+      properties:
+        retention_interval:
+          type: string
+          description: interval between retention job runs, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1h
+          default: 1h
+        retention_Period:
+          type: string
+          description: how long to keep the events, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1h
+          default: 720h
+    FileSettings:
+      type: object
+      properties:
+        max_number_of_files_in_response:
+          type: integer
+          description: max number of files in response, used to restricting custom number_of_files_in_response in storage/share settings
+          format: int64
+          example: 1000
+          default: 1<<63 - 1
+        number_of_files_in_response:
+          type: integer
+          format: int64
+          example: 50
+          default: 50
+    GlobalFileSettings:
+      allOf:
+        - $ref: '#/components/schemas/FileSettings'
+    JobSettings:
+      type: object
+      properties:
+        allow_file_job:
+          type: boolean
+          description: if true, search/rm file job service is enabled on the server
+          default: true
+        allow_repeat:
+          type: boolean
+          description: if true, repeating job is allowed
+          default: false
+        max_repeat_interval:
+          type: string
+          description: maximum interval between repeat job runs, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1h
+          default: 720h
+        min_repeat_interval:
+          type: string
+          description: minimum interval between repeat job runs, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1s
+          default: 1s
+        repeat_interval:
+          type: string
+          description: default interval between repeat job runs, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 24h
+          default: 24h
+        max_repeat_duration:
+          type: string
+          description: maximum duration the repeat job will run, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 262800h
+          default: 262800h
+        min_repeat_duration:
+          type: string
+          description: minimum duration the repeat job will run, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 1h
+          default: 1h
+        repeat_duration:
+          type: string
+          description: default duration the repeat job will run, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 720h
+          default: 720h
+    GlobalJobSettings:
+      allOf:
+        - type: object
+          properties:
+            retention_interval:
+              type: string
+              description: interval between retention background job runs, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1h
+              default: 1h
+            retention_Period:
+              type: string
+              description: how long to keep the jobs, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1h
+              default: 720h
+            retention_batch_size:
+              type: integer
+              format: int64
+              description: the number of jobs the retention job limits for each query from the db
+              default: 50
+        - $ref: '#/components/schemas/JobSettings'
+    TransferSpecSettings:
+      type: object
+      properties:
+        log_path:
+          type: string
+          description: the path to the log file, when using commandine, the default is stdout, API initiated transfers use the system settings.
+          default: ${FILASH_HOME}/filash.log        
+        log_level:
+          type: string
+          description: individual transfer log level
+          default: info
+          enum:
+            - trace
+            - debug
+            - info
+            - warn
+            - error
+            - fatal
+            - panic
+            - ""
+            - disabled
+        max_rate:
+          anyOf:
+            - type: string
+              description: the maximum transfer speed, in such units as 'k' as kbps,  'm' as mbps, 'g' as gbps, 't' as tbps
+              example: 1t
+              default: 1t
+            - type: integer
+              format: int64
+              description: the maximum transfer speed in bps
+        block_size:
+          type: integer
+          format: int64
+          description: default block size, in terms of byte, by which the files will be split for read/write during transfer
+          default: 16777216
+        max_number_of_blocks:
+          type: integer
+          format: int64
+          description: maximum number of blocks a file can be split, for AWS s3 it is 10,000, for big files, the block_size will be determined dynamically by it
+          default: 10000
+        parallel_file_size_threshold:
+          type: integer
+          format: int64
+          description: the file size threshold, in terms of byte, for a parallel transfer to split the file into mutiple chunks and spread across all sessions evenly
+          default: 268435456
+        retries:
+          type: integer
+          format: int64
+          description: the number of retries a transfer can do before completed successfully
+          default: 0
+        retry_delay:
+          type: string
+          description: delay before retry kicks off, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 3s
+          default: 3s
+        rebuilt_assembled_ratio_threshold:
+          type: number
+          format: double
+          description: rebuilt bytes / assembled bytes ratio threshold to throttle high memory usage in case of high loss rate, mostly ranges in 0.1 ~ 1.0, in high loss rate situation, the higher the lower memory usage but lower rate it might compromise, the lower the higher rate may maintain but higher memory usage
+          default: 0.7
+        written_rebuilt_ratio_threshold:
+          type: number
+          format: double
+          description: written bytes / rebuilt bytes ratio threshold to throttle high memory usage in case of slow storage write, mostly ranges in 0.1 ~ 1.0, in slow write situation, the speed may fluctuate, the higher the lower memory usage
+          default: 0.7
+        dial_timeout:
+          type: string
+          description: transfer DTLS dial timeout, in such units as 's' as second,  'm' as minute, 'h' as hour
+          example: 15s
+          default: 15s
+        report_file:
+          type: boolean
+          description: if true, transfer will report transferred files to db
+          default: false
+        insecure_server:
+          type: boolean
+          description: if true, server certificate will not be verified
+          default: false
+        verify_hostname:
+          type: boolean
+          description: if true, server certificate will be verified against the host name in spec.remote_address
+          default: false
+        ca:
+          type: string
+          description: certificate content of the CA to verify server side certificate
+    TransferSettings:
+      allOf:
+        - $ref: '#/components/schemas/TransferSpecSettings'
+        - type: object
+          properties:
+            max_log_level:
+              type: string
+              description: max log level to limit individual transfer log level
+              default: disabled
+              enum:
+                - trace
+                - debug
+                - info
+                - warn
+                - error
+                - fatal
+                - panic
+                - ""
+                - disabled 
+            min_log_level:
+              type: string
+              description: min log level to limit individual transfer log level
+              default: trace
+              enum:
+                - trace
+                - debug
+                - info
+                - warn
+                - error
+                - fatal
+                - panic
+                - ""
+                - disabled 
+            max_block_size:
+              type: integer
+              format: int64
+              description: maximum block size, in terms of byte, to limit block_size
+              default: 5368709120
+            min_block_size:
+              type: integer
+              format: int64
+              description: minimum block size, in terms of byte, to limit block_size
+              default: 5242880
+            max_parallel_file_size_threshold:
+              type: integer
+              format: int64
+              description: maximum file size threshold, in terms of byte, to limit parallel_file_size_threshold
+              default: 1073741824
+            min_parallel_file_size_threshold:
+              type: integer
+              format: int64
+              description: minimum file size threshold, in terms of byte, to limit parallel_file_size_threshold
+              default: 16777216
+            max_retries:
+              type: integer
+              format: int64
+              description: the maximum number of retries to limit retries
+              default: 15
+            max_retry_delay:
+              type: string
+              description: the maximum retry delay to limit retry_delay, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1h
+              default: 1h
+            max_dial_timeout:
+              type: string
+              description: the maximum transfer DTLS dial timeout to limit dial_timeout, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 5m
+              default: 5m
+            min_dial_timeout:
+              type: string
+              description: the minimum transfer DTLS dial timeout to limit dial_timeout, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 5s
+              default: 5s
+            max_number_of_finders:
+              type: integer
+              format: int64
+              description: the max number of finders for individual sessions to limit number_of_finders
+              default: the available number of CPU threads
+            number_of_finders:
+              type: integer
+              format: int64
+              description: the default number of finders for individual session
+              default: 3
+            max_number_of_small_file_readers:
+              type: integer
+              format: int64
+              description: the max number of small file readers for individual sessions to limit number_of_small_file_readers
+              default: the available number of CPU threads
+            number_of_small_file_readers:
+              type: integer
+              format: int64
+              description: the default number of small file readers for individual sessions
+              default: 3
+            max_number_of_big_file_readers:
+              type: integer
+              format: int64
+              description: the max number of big file readers for individual sessions to limit number_of_big_file_readers
+              default: the available number of CPU threads
+            number_of_big_file_readers:
+              type: integer
+              format: int64
+              description: the default number of big file readers for individual sessions
+              default: 3
+            max_number_of_small_file_writers:
+              type: integer
+              format: int64
+              description: the max number of small file writers for individual sessions to limit number_of_small_file_writers
+              default: the available number of CPU threads
+            number_of_small_file_writers:
+              type: integer
+              format: int64
+              description: the default number of small file writers for individual sessions
+              default: 3
+            max_number_of_big_file_writers:
+              type: integer
+              format: int64
+              description: the max number of big file writers for individual sessions to limit number_of_big_file_writers, it applies to s3 stoage, for local storage, the number of writers is always one for resume purposes
+              default: the available number of CPU threads
+            number_of_big_file_writers:
+              type: integer
+              format: int64
+              description: the default number of big file writers for individual sessions to limit number_of_big_file_writers, it applies to s3 stoage, for local storage, the number of writers is always one for resume purposes
+              default: 3
+            max_number_of_removers:
+              type: integer
+              format: int64
+              description: the max number of removers for individual sessions to limit number_of_removers if remove_after is true
+              default: the available number of CPU threads
+            number_of_removers:
+              type: integer
+              format: int64
+              description: the default number of removers for individual sessions if remove_after is true
+              default: 3
+            max_socket_timeout:
+              type: string
+              description: the maximum transfer socket timeout to limit socket_timeout, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 15m
+              default: 15m
+            min_socket_timeout:
+              type: string
+              description: the minimum transfer socket timeout to limit socket_timeout, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 15s
+              default: 15s
+            socket_timeout:
+              type: string
+              description: the default transfer socket timeout, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 90s
+              default: 90s
+            allow_sync:
+              type: boolean
+              description: if true, sync transfer is allowed
+              default: false
+            max_sync_duration:
+              type: string
+              description: the maximum duration to limit sync_duration, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 262800h
+              default: 262800h
+            sync_duration:
+              type: string
+              description: the default duration of sync transfers, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 720h
+              default: 720h
+            max_sync_interval:
+              type: string
+              description: the maximum interval to limit sync_interval, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 24h
+              default: 24h
+            min_sync_interval:
+              type: string
+              description: the minimum interval to limi sync_interval, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 15s
+              default: 15s
+            sync_interval:
+              type: string
+              description: the default interval between sync transfer runs, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1m
+              default: 1m
+            allow_resume_size:
+              type: boolean
+              description: if true, size level resume transfer is allowed
+              default: false
+            allow_resume_attr:
+              type: boolean
+              description: if true, size and mtime level resume transfer is allowed
+              default: false
+            allow_resume_partial:
+              type: boolean
+              description: if true, partial level resume from partial transferred file is allowed
+              default: false
+            allow_remove_after:
+              type: boolean
+              description: if true, remove_after is allowed
+              default: false
+            allow_parallel:
+              type: boolean
+              description: if true, parallel transfer with multiple sessions is allowed
+              default: false
+            max_number_of_parallel_sessions:
+              type: integer
+              format: int64
+              description: the maximum number of parallel sessions for a single transfer, too many parallel sessions on a single server will degrade the performance due to CPU context switches
+            max_rebuilt_assembled_ratio_threshold:
+              type: number
+              format: double
+              description: the maximum rebuilt bytes / assembled bytes ratio threshold to limti rebuilt_assembled_ratio_threshold
+              default: 1.0
+            min_rebuilt_assembled_ratio_threshold:
+              type: number
+              format: double
+              description: the minimum rebuilt bytes / assembled bytes ratio threshold to limti rebuilt_assembled_ratio_threshold
+              default: 0.1
+            max_written_rebuilt_ratio_threshold:
+              type: number
+              format: double
+              description: the maximum written bytes / rebuilt bytes ratio threshold to limti written_rebuilt_ratio_threshold
+              default: 1.0
+            min_written_rebuilt_ratio_threshold:
+              type: number
+              format: double
+              description: the minimum written bytes / rebuilt bytes ratio threshold to limti written_rebuilt_ratio_threshold
+              default: 0.1
+    GlobalTransferSettings:
+      allOf:
+        - $ref: '#/components/schemas/TransferSettings'
+        - type: object
+          properties:
+            allow_transfer:
+              type: boolean
+              description: if true, transfer services will start, transfer related background jobs will start
+              default: true
+            number_of_services:
+              type: integer
+              format: int64
+              description: the number of concurrent transfer listen service threads the server starts
+              default: 100
+            session_spin_delay:
+              type: string
+              description: the delay between sessions are spawn, in such units as 's' as second,  'm' as minute, 'h' as hour
+              default: 50ms
+            max_concurrent_sessions:
+              type: integer
+              format: int64
+              description: the max number of sessions that can run at the same time including number_of_services as well as local initiated sessions
+              default: 100
+            allow_follow_transfer_progress:
+              type: boolean
+              description: if true, /transfers -H"filash-follow" will stream the transfer progress until status turns completed
+              default: false
+            status_timeout:
+              type: string
+              description: the default transfer status timeout, the background job will reap active transfers/sessions based on this parameter comparing to the last_updated_at, in such units as 's' as second,  'm' as minute, 'h' as hour
+              default: 15m
+            status_interval:
+              type: string
+              description: the default transfer status interval for the background transfer/session reaping job, in such units as 's' as second,  'm' as minute, 'h' as hour
+              default: 1m
+            retry_timeout:
+              type: string
+              description: the default transfer retry timeout after which, there will be no retry even through allowed retries hasn't reached, in such units as 's' as second,  'm' as minute, 'h' as hour
+              default: 30m
+            retention_Period:
+              type: string
+              description: how long to keep the completed transfers/sessions, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1h
+              default: 720h
+            retention_interval:
+              type: string
+              description: interval between retention background job runs, in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1h
+              default: 1h
+            retention_batch_size:
+              type: integer
+              format: int64
+              description: the number of transfers/sessions the retention job limits for each query from the db
+              default: 50
+            insecure_client:
+              type: boolean
+              description: if true, client certificate will not be verified
+              default: true
+            ca_path:
+              type: string
+              description: path to CA for verifying client certificate
+    GeneralSettings:
+      type: object
+      properties:
+        max_number_of_records_in_response:
+          type: integer
+          format: int64
+          description: the max number of records in the response to limit ?limit=
+          default: 1000
+        number_of_records_in_response:
+          type: integer
+          format: int64
+          description: the default number of records in the response
+          default: 50
+        league:
+          type: boolean
+          description: whether league (cluster) mode is on/off
+          default: false
+    GlobalSettings:
+      allOf:
+        - type: object
+          properties:
+            version:
+              type: string
+              example: 1.0.0
+            general:
+              $ref: '#/components/schemas/GeneralSettings'
+            db:
+              $ref: '#/components/schemas/GlobalDBSettings'
+            auth:
+              $ref: '#/components/schemas/GlobalAuthSettings'
+            user:
+              $ref: '#/components/schemas/GlobalUserSettings'
+            storage:
+              $ref: '#/components/schemas/GlobalStorageSettings'
+            share:
+              $ref: '#/components/schemas/GobalShareSettings'
+            policy:
+              $ref: '#/components/schemas/GlobalPolicySettings'
+            transfer:
+              $ref: '#/components/schemas/GlobalTransferSettings'
+            job:
+              $ref: '#/components/schemas/GlobalJobSettings'
+            file:
+              $ref: '#/components/schemas/GlobalFileSettings'
+            event:
+              $ref: '#/components/schemas/GlobalEventSettings'
+    Config:
+      type: object
+      properties:
+        server_id:
+          type: string
+          description: the unique id of the server
+        role:
+          type: string
+          description: the role of the binary execution, indicating if the run is a server daemon or a transfer commandline with or without access to the local share
+          example: daemon
+          enum:
+            - daemon
+            - daemon_cmd
+            - client_cmd
+        home:
+          type: string
+          description: home directory where the db and log files will reside, it defaults to the current directory, ${FILASH_HOME} overwrites this setting
+          default: ${PWD}
+        license_path:
+          type: string
+          description: the path to the license
+          default: ${FILASH_HOME}/filash.license
+        private_key_path:
+          type: string
+          description: the path to the private key which will be used for both the restful API https service and the transfer service together with the cert_path
+        cert_path:
+          type: string
+          description: the path to the certificate which will work together with the private key
+        endpoint:
+          type: string
+          description: the transfer service endpoint the server will be listening at
+          default: 0.0.0.0:35797
+        http_endpoint:
+          type: string
+          description: the http restful service endpoint, by default http service is running
+          default: 0.0.0.0:35798
+        https_endpoint:
+          type: string
+          description: the https restful service endpoint, need private key and certificate to run
+        PartialPath:
+          type: string
+          description: the path to the partial files that the local storage is being used for parallel transfers
+          default: ${FILASH_HOME}/filash.partials
+        log_path:
+          type: string
+          description: the path to the log file
+          default: ${FILASH_HOME}/filash.log
+        log_level:
+          type: string
+          description: the log level
+          default: info
+          enum:
+            - trace
+            - debug
+            - info
+            - warn
+            - error
+            - fatal
+            - panic
+            - disabled
+            - ""
+        log_pretty:
+          type: boolean
+          description: pretty output to console
+          default: false
+        log_max_size_mb:
+          type: integer
+          format: int64
+          description: maximum size in megabytes of the log file
+          default: 100
+        log_max_age_day:
+          type: integer
+          format: int64
+          description: the maximum number of days to retain old log files based on the timestamp encoded in their filename, 0 means not to remove old log files based on age.
+          default: 0
+        log_max_backups:
+          type: integer
+          format: int64
+          description: the maximum number of old log files to retain, 0 means to retain all old log files (though MaxAge may still cause them to get deleted.)
+          default: 0
+        log_compress:
+          type: boolean
+          description: determines if the rotated log files should be compressed using gzip.
+          default: true
+        settings:
+          type: object
+          $ref: '#/components/schemas/GlobalSettings'
+        
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: us.cgd9buo3lcj4di4njrtg
+        password:
+          type: string
+          example: 12345
+        salt:
+          type: string
+          example: cgda8cg3lcj5akmrd18g
+        role:
+          type: string
+          example: regular
+          enum:
+            - regular
+            - admin
+            - super
+        settings:
+          type: object
+          $ref: '#/components/schemas/UserSettings'
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    Storage:
+      type: object
+      properties:
+        id: 
+          type: string
+          example: st.cgd9buo3lcj4di4njrtf
+        type:
+          type: string
+          example: local
+          enum:
+            - local
+            - s3
+        store:
+          type: object
+          properties:
+            path:
+              type: string
+              example: /tmp/store_1
+            endpoint:
+              type: string
+              example: http://s3.amazonaws.com
+            region:
+              type: string
+              example: us-east-1
+            bucket:
+              type: string
+              example: qa-bucket-1
+            iam:
+              type: string
+              example: arn:aws:iam::123456789012:role/S3Access
+            access_key:
+              type: string
+            access_key_secret:
+              type: string
+            settings:
+              type: object
+              properties:
+                local_file_mode:
+                  type: integer
+                  example: 644
+                  default: 644
+                amz_storage_class:
+                  type: string
+                  example: standard
+                  default: standard
+                amz_server_side_encryption:
+                  type: string
+                amz_kms_key_id:
+                  type: string
+                amz_acl:
+                  type: string
+        settings:
+          type: object
+          properties:
+            auth:
+              $ref: '#/components/schemas/GlobalAuthSettings'
+            storage:
+              $ref: '#/components/schemas/StorageSettings'
+            transfer:
+              $ref: '#/components/schemas/TransferSettings'
+            job:
+              $ref: '#/components/schemas/JobSettings'
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    Share:
+      type: object
+      properties:
+        id:
+          type: string
+          example: sh.cgd9buo3lcj4di4njrtf
+        storage:
+          type: string
+          example: st.cgd9buo3lcj4di4njrtf
+        path:
+          type: string
+          example: /tmp/st.cgd9buo3lcj4di4njrtf/sh.cgd9buo3lcj4di4njrtf
+        permissions:
+          description: permissions granted for all users that can access the share, * means all permssions
+          type: array
+          items:
+            type: string
+            enum:
+              - "stat"
+              - "read"
+              - "write"
+              - "list"
+              - "rm"
+              - "find"
+              - "*"
+          example: ["stat", "list","read"]
+        settings:
+          type: object
+          properties:
+            auth:
+              $ref: '#/components/schemas/GlobalAuthSettings'
+            share:
+              $ref: '#/components/schemas/ShareSettings'
+            transfer:
+              $ref: '#/components/schemas/TransferSettings'
+            job:
+              $ref: '#/components/schemas/JobSettings'
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    Policy:
+      type: object
+      properties:
+        id: 
+          type: string
+          example: po.cgd9buo3lcj4di4njrtf
+        subject:
+          type: string
+          example: us.cgd9buo3lcj4di4njrtf
+        share:
+          type: string
+          example: sh.cgd9buo3lcj4di4njrtf
+        permissions:
+          description: permissions granted for all users that can access the share, * means all permssions
+          type: array
+          items:
+            type: string
+            enum:
+              - "stat"
+              - "read"
+              - "write"
+              - "list"
+              - "rm"
+              - "find"
+              - "*"
+          example: ["stat", "list","read"]
+        settings:
+          type: object
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    Key:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+          example: admin
+        key:
+          type: string
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          example: enqueued
+          enum:
+            - enqueued
+            - running
+            - completed
+        spec:
+          type: object
+          $ref: '#/components/schemas/TransferSpec'
+        enqueued_sessions:
+          type: integer
+          format: int64
+        running_sessions:
+          type: integer
+          format: int64
+        completed_sessions:
+          type: integer
+          format: int64
+        aborted_sessions:
+          type: integer
+          format: int64
+        progress:
+          type: object
+          $ref: '#/components/schemas/Progress'
+        retries:
+          type: integer
+          format: int64
+          description: the number of retried times if the transfer failed
+        error:
+          type: string
+        initiator:
+          type: boolean
+          description: indicating whether it is submitted on the current server
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_enqueued_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        tid:
+          type: string
+          description: parent transfer id
+        status:
+          type: string
+          example: enqueued
+          enum:
+            - enqueued
+            - running
+            - completed
+        spec:
+          type: object
+          $ref: '#/components/schemas/TransferSpec'
+        parallel_idx:
+          type: integer
+          format: int64
+          description: the zero starting index of the session out of the tatol parallel sessions
+        progress:
+          type: object
+          $ref: '#/components/schemas/Progress'
+        pmtu:
+          type: integer
+          description: path maximum transmission unit 
+        runs:
+          type: integer
+          format: int64
+          description: the number of executions of the session if retry appllies
+        machine_id:
+          type: string
+          description: the unique id of the server that runs the session (in the cluster)
+        error:
+          type: string
+        initiator:
+          type: boolean
+          description: indicating whether it is submitted on the current server
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_enqueued_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    Progress:
+      type: object
+      properties:
+        found_bytes:
+          type: integer
+          format: int64
+        identical_bytes:
+          type: integer
+          format: int64
+        expected_bytes:
+          type: integer
+          format: int64
+        reloaded_bytes:
+          type: integer
+          format: int64
+        read_bytes:
+          type: integer
+          format: int64
+        assembled_bytes:
+          type: integer
+          format: int64
+        rebuilt_bytes:
+          type: integer
+          format: int64
+        written_bytes:
+          type: integer
+          format: int64
+        tranferred_bytes:
+          type: integer
+          format: int64
+        retransferred_bytes:
+          type: integer
+          format: int64
+        found_files:
+          type: integer
+          format: int64
+        identical_files:
+          type: integer
+          format: int64
+        expected_files:
+          type: integer
+          format: int64
+        written_files:
+          type: integer
+          format: int64
+        found_links:
+          type: integer
+          format: int64
+        expected_links:
+          type: integer
+          format: int64
+        written_Links:
+          type: integer
+          format: int64
+        found_folders:
+          type: integer
+          format: int64
+        expected_folders:
+          type: integer
+          format: int64
+        made_folders:
+          type: integer
+          format: int64
+        deleted_files:
+          type: integer
+          format: int64
+        rtt:
+          type: string
+          format: int64
+          description: in unit of ms
+          example: 100ms
+        bps: 
+          type: integer
+          format: int64
+          description: bits per second
+        progress:
+          type: number
+          format: double
+    TransferSpec:
+      type: object
+      properties:
+        action:
+          type: string
+          example: upload
+          enum:
+            - upload
+            - download
+        sync:
+          type: object
+          properties:
+            mode:
+              type: string
+              example: transfer
+              enum:
+                - transfer
+                - session
+            interval:
+              type: string
+              description: in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1h
+            since_last_updated_at:
+              type: boolean
+              default: false
+              description: if true, the interval will be calcuated by the last_updated_at, otherwise by last_enqueued_at
+            until:
+              type: string
+              format: date-time
+              description: in format of RFC3339
+              example: 2023-04-11T16:00:25Z
+        resume:
+          type: string
+          example: attr
+          enum:
+            - size
+            - attr
+            - partial
+        source:
+          type: object
+          properties:
+            share:
+              type: string
+            token:
+              type: string
+              example: Basic dXNlcjE6dXNlcjFwYXNzCg==
+            cd:
+              type: string
+              description: current directory relative to the share root
+            paths:
+              type: array
+              items:
+                type: string
+                example: ["file1.txt", "file2.txt"]
+            symlink:
+              type: string
+              example: asis
+              enum:
+                - asis
+                - follow
+                - skip
+            filters:
+              type: object
+              $ref: '#/components/schemas/Filters'
+            remove_after:
+              type: boolean
+              default: false
+              description: whether to delete files after being successfully transferred
+        dest:
+          type: object
+          properties:
+            share:
+              type: string
+            token:
+              type: string
+              example: Basic dXNlcjE6dXNlcjFwYXNzCg==
+            path:
+              type: string
+        storage:
+          type: string
+          description: storage id of local side (source side for upload, dest side for download)
+        remote_address:
+          type: string
+          description: comma seperated remote host names or ipv4/ipv6 addresses
+          example: localhost
+        path_pairs:
+          type: array
+          description: to transfer the full relative 'src' path to destination as the full relative path of 'dst'
+          items:
+            type: object
+            properties:
+              src:
+                type: string
+              dst:
+                type: string
+          example: [{"src":"folder_src_1/file1.txt","dst":"folder_dst_1/file1.txt"}]
+        parallel:
+          type: integer
+          format: int64
+          description: number of parallel sessions of the transfer, the source file set will be split among parallel sessions, and big files will be split too according to parallel_file_size_threshold in settings
+        settings:
+          $ref: '#/components/schemas/TransferSpecSettings'
+    PathFilters:
+      type: object
+      properties:
+        includes:
+          type: array
+          items:
+            type: string
+            example: "**.txt"
+        excludes:
+          type: array
+          items:
+            type: string
+            example: .filash
+    Filters:
+      type: object
+      properties:
+        includes:
+          type: array
+          items:
+            type: string
+            example: "**.txt"
+        excludes:
+          type: array
+          items:
+            type: string
+            example: .filash
+        before:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-04-11T16:00:25Z
+        after:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-04-11T16:00:25Z
+    SessionFile:
+      type: object
+      properties:
+        path:
+          type: string
+        size:
+          type: integer
+          format: int64
+        type:
+          type: string
+          example: folder
+          enum:
+            - file
+            - folder
+            - link
+        mtime:
+          type: string
+          format: date-time
+          description: the last modified time in format of RFC3339
+          example: 2023-04-11T16:00:25Z
+        transfer:
+          type: string
+          description: the transfer id
+          example: tr.cgd9buo3lcj4di4njrtf
+        upload_id:
+          type: string
+          description: the upload id for big file on s3 storage
+        error:
+          type: string
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    JobSpec:
+      type: object
+      properties:
+        action:
+          type: string
+          example: search
+          enum:
+            - search
+            - rm
+        repeat:
+          type: object
+          properties:
+            mode:
+              type: string
+              example: job
+              enum:
+                - job
+            interval:
+              type: string
+              description: in such units as 's' as second,  'm' as minute, 'h' as hour
+              example: 1h
+            since_last_updated_at:
+              type: boolean
+              default: false
+              description: if true, the interval will be calcuated by the last_updated_at, otherwise by last_enqueued_at
+            until:
+              type: string
+              format: date-time
+              description: in format of RFC3339
+              example: 2023-04-11T16:00:25Z
+        share:
+          type: string
+          example: sh.cgd9buo3lcj4di4njrug
+        storage:
+          type: string
+          example: st.cgd9buo3lcj4di4njrug
+        token:
+          type: string
+          example: Basic dXNlcjE6dXNlcjFwYXNzCg==
+        cd:
+          type: string
+          description: current directory relative to the share root
+        name:
+          type: string
+          description: the file name
+        path: 
+          type: string
+          description: the path relative to the share root that the action will be performed on 
+        symlink:
+          type: string
+          example: asis
+          enum:
+            - asis
+            - follow
+            - skip
+        filters:
+          type: object
+          $ref: '#/components/schemas/Filters'
+        ignore_error:
+          type: boolean
+          default: false
+          description: if true, the job will continue on file errors to completion
+        summary:
+          type: boolean
+          default: false
+          description: if true, only summary will be responded
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          example: enqueued
+          enum:
+            - enqueued
+            - running
+            - completed
+        spec:
+          $ref: '#/components/schemas/JobSpec'
+        error:
+          type: string
+        progress:
+          type: object
+          properties:
+            found:
+              type: integer
+              format: int64
+              description: the total number of file entries the job found
+            excluded:
+              type: integer
+              format: int64
+              description: the total number excluded files/symlinks/folders
+            acted:
+              type: integer
+              format: int64
+              description: the total number of files the job acted (search/rm) on
+            errors:
+              type: integer
+              format: int64
+              description: the total number of errors
+            regulars:
+              type: integer
+              format: int64
+              description: the total number of regular files found
+            total_size:
+              type: integer
+              format: int64
+              description: the total size of all regular files found
+            irregulars:
+              type: integer
+              format: int64
+              description: the total number of irregular files found
+            symlinks:
+              type: integer
+              format: int64
+              description: the total number of symlinks found
+            folders:
+              type: integer
+              format: int64
+              description: the total number of folders found
+        runs:
+          type: integer
+          format: int64
+          description: the number of executions of the session if retry appllies
+        machine_id:
+          type: string
+          description: the unique id of the server that runs the session (in the cluster)
+        tags:
+          type: object
+          additionalProperties: {}
+          example: '{"org":{"id":"finance_1"}}'
+        domain:
+          type: string
+          example: do.cgd9buo3lcj4di4njrug
+        created_by:
+          type: string
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_enqueued_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+        last_updated_by:
+          type: string
+          example: admin
+        last_updated_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    JobFile:
+      type: object
+      properties:
+        name:
+          type: string
+          description: the file name
+        path:
+          type: string
+        size:
+          type: integer
+          format: int64
+        type:
+          type: string
+          example: folder
+          enum:
+            - file
+            - folder
+            - link
+        mtime:
+          type: string
+          format: date-time
+          description: the last modified time in format of RFC3339
+          example: 2023-04-11T16:00:25Z
+        error:
+          type: string
+    File:
+      type: object
+      properties:
+        name:
+          type: string
+          description: the name of the file/folder/symlink
+        path:
+          type: string
+          description: the path of the file/folder/symlink relative to the share root
+        type:
+          type: string
+          description: the type of the item
+          example: folder
+          enum:
+            - file
+            - folder
+            - link
+        class:
+          type: string
+          description: the class of the item in s3 storage
+          example: STANDARD
+          enum:
+            - STANDARD
+            - REDUCED_REDUNDANCY
+            - GLACIER
+            - STANDARD_IA
+            - ONEZONE_IA
+            - INTELLIGENT_TIERING
+            - DEEP_ARCHIVE
+            - OUTPOSTS
+            - GLACIER_IR
+        target:
+          type: string
+          description: the symlink target
+        size:
+          type: integer
+          format: int64
+        mtime:
+          type: string
+          format: date-time
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        resource:
+          type: string
+          example: share
+          enum:
+              - user
+              - storage
+              - share
+              - policy
+              - authkey
+              - transfer
+              - job
+        method:
+          type: string
+          example: put
+          enum:
+              - post
+              - put
+              - delete
+        subject:
+          type: object
+          description: subject has the raw json body of the corresponding resource
+          additionalProperties: {}
+          example: {"id":"sh.cgqud283lcj12nctuh5g","storage":"localst1","path":"/","settings":{},"domain":"do.cgbt3qg3lcj9kcgi6pdg","created_by":"admin","created_at":"2023-04-11T16:00:25.508556-07:00","last_updated_by":"admin","last_updated_at":"2023-04-11T16:00:25.508556-07:00"}
+        created_at:
+          type: string
+          format: date-time
+          description: in format of RFC3339
+          example: 2023-03-01T12:45:31Z
+    ResponseMessage:
+      type: object
+      properties:
+        messsage:
+          type: string
+    BearerToken:
+      allOf:
+      - type: object
+        properties:
+          sbr:
+            description: the role for the issuer to assume the subject, optional.
+            type: string
+            example: admin
+            default: regular
+            enum:
+              - regular
+              - admin
+              - super
+          dom:
+            description: domain id, if the issuer is super user, optional.
+            type: string
+          grs:
+            description: group ids, an array of subject ids used to look up policies, optional.
+            type: array
+            items:
+              type: string
+          pls:
+            description: policies of share/permissions map, "*" means all permssions
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
+              example: stat, read,
+              enum:
+                - stat
+                - read
+                - write
+                - list
+                - rm
+                - find
+                - "*"
+      - $ref: '#/components/schemas/JWTClaims'
+    JWTClaims:
+      type: object
+      properties:
+        iss:
+          description: issuer of the token, JWT token field.
+          type: string
+        sub:
+          description: the subject to which the token grants permissions, JWT token field.
+          type: string
+        exp:
+          description: ExpiresAt of the token, JWT token field.
+          type: integer
+          format: int64
+        nbf:
+          description: NotBefore of the token, JWT token field.
+          type: integer
+          format: int64
+        iat:
+          description: IssuedAt of the token, JWT token field.
+          type: integer
+          format: int64
+        jti:
+          description: ID of the token, JWT token field.
+          type: string
+    License:
+      description: the format of a license is a signed JWT token with settings
+      allOf:
+        - $ref: '#/components/schemas/JWTClaims'
+        - type: object
+          properties:
+            setting:
+              type: object
+              $ref: '#/components/schemas/GlobalSettings'
+  parameters:
+    id:
+      name: id
+      in: path
+      description: unique ID of the resource
+      required: true
+      schema:
+        type: string
+    tid:
+      name: tid
+      in: path
+      description: ID of the transfer
+      required: true
+      schema:
+        type: string
+        example: tr.cgd9buo3lcj4di4njrtf
+    sid:
+      name: sid
+      in: path
+      description: ID of the session
+      required: true
+      schema:
+        type: string
+        example: tr.se.cgd9buo3lcj4di4njrtf.0
+    filash-storage:
+      name: filash-storage
+      in: header
+      description: the storage id in which to create the file, only applies to super or admin user
+      schema:
+        type: string
+        example: st.cgd9buo3lcj4di4njrtf
+    filash-share:
+      name: filash-share
+      in: header
+      description: the share id in which to create the file, required for regular user
+      schema:
+        type: string
+        example: sh.cgd9buo3lcj4di4njrtf
+    filash-domain:
+      name: filash-domain
+      in: header
+      description: required for super user login to hint the domain
+      schema:
+        type: string
+        example: do.cgd9buo3lcj4di4njrtf
+    filash-settings-copy:
+      name: filash-settings-copy
+      in: header
+      description: indicating whether or not copy the whole settings in the request body, which is used to unset settings, copy if present
+      required: false
+      schema:
+        type: string
+        example: yes
+    last_updated_at:
+      name: last_updated_at
+      in: header
+      description: it is required for confirmation to avoid chaos of concurrent modify requests, it can be obtained from the response of GET /{resource}/{id}
+      required: true
+      schema:
+        type: string
+    filash-with:
+      name: filash-with
+      in: header
+      description: mata data can be queried if the value is meta, for s3 storage, only last uploaded time is shown without this header, otherwise last modified time will be shown if there is any, filash operations will always add the last modified time as a meta data to any file on s3 storage 
+      schema:
+        type: string
+        example: meta
+        enum:
+          - meta
+    filash-ignore-error:
+      name: filash-ignore-error
+      in: header
+      description: whether to ignore error, default is NOT
+      schema:
+        type: string
+        example: yes
+    filash-summary-only:
+      name: filash-summary-only
+      in: header
+      description: wheher to show summary only, default is show deleted files as well
+      schema:
+        type: string
+        example: yes
+    filash-includes:
+      name: filash-includes
+      in: header
+      description: a comma seperated string array of include filters
+      schema:
+        $ref: '#/components/schemas/Filters/properties/includes'
+    filash-excludes:
+      name: filash-excludes
+      in: header
+      description: a comma seperated string array of exclude filters
+      schema:
+        $ref: '#/components/schemas/Filters/properties/excludes'
+    filash-before:
+      name: filash-before
+      in: header
+      description: the date time before when the delete is scoped
+      schema:
+        $ref: '#/components/schemas/Filters/properties/before'
+    filash-after:
+      name: filash-after
+      in: header
+      description: the date time afer when the delete is scoped
+      schema:
+        $ref: '#/components/schemas/Filters/properties/after'
+    filash-symlink:
+      name: filash-symlink
+      in: header
+      description: symlink operation
+      schema:
+        type: string
+        example: asis
+        enum:
+          - asis
+          - follow
+          - skip
+    filash-background:
+      name: filash-background
+      in: header
+      description: whether to execute the operation in the background as a job, if present, it will be the same as the delete job
+      schema:
+        type: string
+        example: yes
+    filash-follow:
+      name: filash-follow
+      in: header
+      description: follow the transfer with http streaming synchronously, if present, transfer progress will be http streaming to the client until the status turns completed
+      required: false
+      schema:
+        type: string
+        example: yes
+    accept:
+      name: accept
+      in: header
+      description: if set with application/octet-stream, the content of the file will be downloaded via http
+      schema:
+        type: string
+        example: application/octet-stream
+        enum:
+          - application/octet-stream
+    filash-search:
+      name: filash-search
+      in: header
+      description: if present with file name, search operation will be performed synchronously, if filash-background is present, it will be the same as search job
+      schema:
+        type: string
+        example: "*.txt"
+    Content-Encoding:
+      name: Content-Encoding
+      in: header
+      description: requested file path can be unpadded base64 encoded if the header's value is base64
+      schema:
+        type: string
+        example: base64
+        enum:
+          - base64
+    filash-no-sort:
+      name: filash-no-sort
+      in: header
+      description: whether to return file list no sorted, 
+      schema:
+        type: string
+        example: yes
+    filash-no-cache:
+      name: filash-no-cache
+      in: header
+      description: whether to return file list NOT from in cache, by default cache is on for performance consideration, however the cache is refreshed whenever the first page is queried, subsequent pages will be listed from in the cache
+      schema:
+        type: string
+        example: yes
+    path:
+      name: path
+      in: path
+      description: path of the file
+      required: true
+      schema:
+        type: string
+        example: packages/package1/file1.txt
+    storage:
+      name: storage
+      in: query
+      description: scope the query with the storage id
+      required: false
+      schema:
+        type: string
+        example: st.cgd9buo3lcj4di4njrtf
+    share:
+      name: share
+      in: query
+      description: scope the query with the share id
+      required: false
+      schema:
+        type: string
+        example: sh.cgd9buo3lcj4di4njrtf
+    status:
+      name: status
+      in: query
+      description: active status jobs including enqueued and running can be queried with this parameter
+      required: false
+      schema:
+        type: string
+        example: running
+        enum:
+          - enqueued
+          - running
+    user:
+      name: user
+      in: query
+      description: the user id to scope the query, regular user login ignores this parameter
+      required: false
+      schema:
+        type: string
+    limit:
+      name: limit
+      in: query
+      description: the number of items in the response, not exceeding max_number_of_records_in_response in the config
+      required: false
+      schema:
+        type: integer
+        format: int64
+        default: 50
+    tag:
+      name: tag
+      in: query
+      description: the key/value tag used to query, for example if the user has the tags json like '{"tags":{"org":{"id":"finance_1"}}}', the tag query parameter can be '?tag=org.id=finance_1'
+      required: false
+      schema:
+        type: string
+        example: org.id=finance_1
+    filash-next-token:
+      name: filash-next-token
+      in: header
+      schema:
+        $ref: '#/components/headers/filash-next-token'
+  responses:
+    '200':
+      description: successful operation
+    '400':
+      description: bad request for invalid parameters.
+    '401':
+      description: Authorization information is missing or invalid.
+    '403':
+      description: Forbidden for various reasons.
+      content:
+        application/json: 
+          schema:
+            $ref: '#/components/schemas/ResponseMessage'
+    '404':
+      description: Resource not found
+    '409':
+      description: Resource already exists
+    '500':
+      description: json parsing, database operations or other unexpected error.
+      content:
+        application/json: 
+          schema:
+            $ref: '#/components/schemas/ResponseMessage'
+    '503':
+      description: service unavailable
+  headers:
+    filash-next-token:
+      description: a base64 encoded string from which the list starts, if none, it starts from the first, bad base64 format will get 400 response code.
+      required: false
+      schema:
+        type: string
+        example: L1NHVm9jazFhVlRJPQ==
+    X-Count:
+      description: number of records in the current response
+      schema:
+        type: integer
+        format: int64
+        example: 10
+    X-Total-Count:
+      description: total number of records of the query that can be traversed with filash-next-token headers until zero records returned in the response.
+      schema:
+        type: integer
+        format: int64
+        example: 100
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Custom JWT
+      $ref: '#/components/schemas/BearerToken'
+security:
+  - basicAuth: []
+  - bearerAuth: []
