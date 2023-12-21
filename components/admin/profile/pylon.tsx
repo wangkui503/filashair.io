@@ -117,7 +117,7 @@ export default function PylonNew() {
       
 
       return (
-        <div className="p-3">
+        <div className="pb-4 bg-white ">
           <ProfileNav page='MyDownloadsNewRef'/>
           
 

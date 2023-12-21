@@ -53,7 +53,7 @@ export default function UpdateProfile() {
   }
 
       return (
-        <div className="p-3">
+        <div className="pb-4 bg-white ">
           <ProfileNav page='UpdateProfileRef'/>
           
           <div className="flex flex-col gap-4">
