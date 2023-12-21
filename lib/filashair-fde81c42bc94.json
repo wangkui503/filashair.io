@@ -1,13 +1,1 @@
-{
-  "type": "service_account",
-  "project_id": "filashair",
-  "private_key_id": "fde81c42bc9487a2bc737520c250ff630360af58",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCfC8BOk9XztyE1\npbt5h2+0HYKKjZhgXnYhd8I8bE6OO/wc0coJORvXhWpNXwbT603e8AVOotNoE9xK\ntGT1+eJrG6fARrgbhgxvLOV3huV7BWhni1z+WF9LcSRXzLlqLxEcQfjFB4GTQcWJ\nzdNTc2ouqZwBn+H32U5KNdSEPK1GxFOfbzwobyr3zwxeOrKrE5Q7vuk+nNp9qEuV\nsrMS2oByvGLfYXnA4ObpC2CJP1n3SpFSf1ec9V4KkV4+z2gVXj9F3KsePxBwlt4C\nQxlgGj8T0fSdFMcl7KcYiuAtnkcQiA3+nuteZVJMM9F55C8tI52LZy5KlAnB0fy5\ntEfQtE/jAgMBAAECggEAD0WcmK7/a2CZUsJwRxInOr9eqplAGXjYlQwf3Zd0z5mY\n8td+M/aE4uQPuhA24qCEoLShfdSKwkKt84pw62GsSSalrAPeZ94uUXqZKioM3Qw+\n4zpxmoa319GscLXa1ARi+zimf5zh51b4dewKr8e0WXi13z4P/7GhH+UdW/lLljDb\nKGcVPfX4cem8nyI0WSbGGHmAk3/aXBSEZGxiudUlG4uSxJ17rhiCW9HiPqW8kgIJ\ntnoQ57TReS/Y4hgXG+QgQo0GWAegDJqGguY8L7EQgyislIxkbOll0XOVRlWdIm0Q\np/CXLy80j+zR+f6IyxHljPNsVhc1aK4gbdCkZ376uQKBgQDN1iX1Jl+34W1wD+rG\n0yFFOnlsxAHy8m51mpk8dWWhx41oZxaUvxU3yLmpDZ/fBbjPxZJvHDCiWFDkLz3f\n6i3Hbj/5f//1I6+YwPXxWwYMrwjXzzHKwR9xHDy/FIWJNanynrrv3H/d7+9OTTrB\n0ZxM6gRngj4/50QwNvc8hvtLJwKBgQDFzmbymFL2SRodJSam6rxbUijtPoDLJt+B\nvBhRdxm1RNhl+tMpNDs14td4aDgk1Y6DVGOY5rlgSbDfhPjuuVtWveQCppZSVNAJ\nmcp9AOtYgHsuFZDvZ4jMQ5njBgWvKvVpzj7lwLDIucaSHJKIbQicoIhabjTboq2l\nn3SqTQr65QKBgAReajnU0a1GdJsvS01jB86/WfpsApqUeLG4UU5OM5UGdkLkBT+s\n+pdPhFlJN751EaIfUGdZUtLvSvA87HRHNSeJeIQkKluaoUx9s/qmcu9r+6UQ+b6S\n8Mbm0YdAuUDbSbsjkVYr+O7N++dOjlO0zjt3sBY+VnHmx7S6Re8b8lN7AoGAM1J2\nS4NSIyycZet5t903ucn7bHLHH+6aFyMifCCWvv152BvYJdyzcCvHFCqWRphSPajr\nnoRenKkCBzyNCgN1u2/RdQ6b+gifYZ5Rd1WBupi7XR2jWTpXuAfiKZEqcGSJAEbO\n8vWn6Kyq5MYdDuCbV2gfeLcXZ9UxkMNqlbUfoDECgYEAqJTS1AGB39WVb0o/ym1w\nvZe4dj1RkfoHs3NOJK9tI7JhRAHEdXx/gMDh7E8GaxJKYfvJbc02zy6Vo4LZgixb\no302xBm0pyZOc1vXRJ5GnGdVCKxXg0K31N1+oY+E8hi6+R0Rb8dJwTh5vVz5iznD\nek8ak5WoX7kptp+aekYcc6c=\n-----END PRIVATE KEY-----\n",
-  "client_email": "filashair@filashair.iam.gserviceaccount.com",
-  "client_id": "101684439928715253202",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/filashair%40filashair.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
+
